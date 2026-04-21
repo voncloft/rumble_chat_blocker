@@ -6,11 +6,12 @@ Firefox add-on for `https://rumble.com/chat` that adds a small block button besi
 
 - Injects a `Block` button beside each `.js-user-tag.chat-history--username` entry on `rumble.com/chat`.
 - Stores blocked usernames in the add-on's own local storage.
-- Reloads the page after a block so the user's chat rows disappear immediately.
+- Hides the blocked user's chat rows immediately without reloading the page.
 - Generates equivalent uBlock Origin rules in this format:
+- Adds a Firefox preferences page where you can edit blocked names, remove entries, and export filters.
 
 ```text
-rumble.com##.js-user-tag.chat-history--username:has-text(name):upward(1)
+rumble.com##button.js-user-tag:has-text(name):upward(.chat-history--row)
 ```
 
 ## Important limitation
@@ -24,6 +25,16 @@ Firefox extensions cannot directly edit another extension's private storage, and
 3. Click `Load Temporary Add-on`.
 4. Select [manifest.json](/home/von/projects/rumble-chat-blocker/manifest.json).
 
+## Preferences page
+
+Open the add-on preferences from Firefox's add-on manager, or click `Preferences` in the popup. The preferences page lets you:
+
+- Edit blocked usernames
+- Remove entries
+- Add names manually
+- Save changes back to extension storage
+- Copy the generated uBO filters
+
 ## Files
 
 - [manifest.json](/home/von/projects/rumble-chat-blocker/manifest.json)
@@ -31,4 +42,6 @@ Firefox extensions cannot directly edit another extension's private storage, and
 - [content-script.js](/home/von/projects/rumble-chat-blocker/content-script.js)
 - [popup.html](/home/von/projects/rumble-chat-blocker/popup.html)
 - [popup.js](/home/von/projects/rumble-chat-blocker/popup.js)
+- [options.html](/home/von/projects/rumble-chat-blocker/options.html)
+- [options.js](/home/von/projects/rumble-chat-blocker/options.js)
 # rumble_chat_blocker

@@ -1,7 +1,8 @@
-const USER_TAG_SELECTOR = ".js-user-tag.chat-history--username";
+const USER_TAG_SELECTOR = "button.js-user-tag";
 const STORAGE_KEY = "blockedUsers";
 const HIDDEN_CLASS = "rumble-chat-blocker-hidden";
 const BLOCK_BUTTON_CLASS = "rumble-chat-blocker-button";
+const ROW_SELECTOR = ".chat-history--row, .chat-history--rant, .chat-history--notification";
 
 let blockedUsers = new Map();
 let observer = null;
@@ -11,11 +12,11 @@ function normalizeUsername(username) {
 }
 
 function buildFilter(username) {
-  return `rumble.com##.js-user-tag.chat-history--username:has-text(${username}):upward(1)`;
+  return `rumble.com##button.js-user-tag:has-text(${username}):upward(.chat-history--row)`;
 }
 
 function getRowFromUserTag(userTag) {
-  return userTag?.parentElement ?? null;
+  return userTag?.closest(ROW_SELECTOR) ?? userTag?.parentElement ?? null;
 }
 
 function getUsernameFromTag(userTag) {
@@ -35,7 +36,10 @@ function ensureStyle() {
     }
 
     .${BLOCK_BUTTON_CLASS} {
-      margin-left: 8px;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      margin-right: 6px;
       border: 0;
       border-radius: 999px;
       padding: 2px 8px;
@@ -43,6 +47,9 @@ function ensureStyle() {
       font-size: 11px;
       line-height: 1.6;
       cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
+      vertical-align: middle;
       color: #111827;
       background: #f59e0b;
     }
@@ -111,6 +118,7 @@ async function loadBlockedUsers() {
     if (!cleanName) {
       continue;
     }
+
     blockedUsers.set(normalizeUsername(cleanName), cleanName);
   }
 }
@@ -151,11 +159,30 @@ function createBlockButton(username) {
     event.stopPropagation();
 
     addBlockedUser(username)
-      .then(() => window.location.reload())
+      .then(() => {
+        processDocument();
+      })
       .catch((error) => console.error("Failed to block Rumble chat user:", error));
   });
 
   return button;
+}
+
+function ensureLiteralSpace(button, shouldExist) {
+  const nextSibling = button.nextSibling;
+  const existingSpace =
+    nextSibling instanceof Text && nextSibling.nodeValue === " " ? nextSibling : null;
+
+  if (!shouldExist) {
+    existingSpace?.remove();
+    return;
+  }
+
+  if (existingSpace) {
+    return;
+  }
+
+  button.after(document.createTextNode(" "));
 }
 
 function ensureBlockButton(userTag, username) {
@@ -164,18 +191,27 @@ function ensureBlockButton(userTag, username) {
     return;
   }
 
+  const container = userTag.parentElement;
+  if (!container) {
+    return;
+  }
+
   const usernameKey = normalizeUsername(username);
-  const existingButton = row.querySelector(`.${BLOCK_BUTTON_CLASS}[data-username-key="${usernameKey}"]`);
+  const badgesWrapper = Array.from(container.children).find((child) =>
+    child instanceof Element && child.classList.contains("chat-history--badges-wrapper")
+  );
+  const hasBadges = badgesWrapper instanceof Element && badgesWrapper.children.length > 0;
+  const existingButton = Array.from(container.querySelectorAll(`.${BLOCK_BUTTON_CLASS}`)).find(
+    (button) => button.dataset.usernameKey === usernameKey
+  );
   if (existingButton) {
+    ensureLiteralSpace(existingButton, !hasBadges);
     return;
   }
 
   const button = createBlockButton(username);
-  if (userTag.nextSibling) {
-    row.insertBefore(button, userTag.nextSibling);
-  } else {
-    row.appendChild(button);
-  }
+  userTag.insertAdjacentElement("afterend", button);
+  ensureLiteralSpace(button, !hasBadges);
 }
 
 function startObserving() {
@@ -195,6 +231,10 @@ function startObserving() {
     childList: true,
     subtree: true,
   });
+
+  window.setInterval(() => {
+    processDocument();
+  }, 1500);
 }
 
 browser.storage.onChanged.addListener((changes, areaName) => {

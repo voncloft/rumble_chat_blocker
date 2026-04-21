@@ -1,7 +1,7 @@
 const STORAGE_KEY = "blockedUsers";
 
 function buildFilter(username) {
-  return `rumble.com##.js-user-tag.chat-history--username:has-text(${username}):upward(1)`;
+  return `rumble.com##button.js-user-tag:has-text(${username}):upward(.chat-history--row)`;
 }
 
 function normalizeUsername(username) {
@@ -70,6 +70,12 @@ async function render() {
 
 document.getElementById("copy-filters").addEventListener("click", () => {
   copyFilters().catch((error) => console.error("Failed to copy filters:", error));
+});
+
+document.getElementById("open-options").addEventListener("click", () => {
+  browser.runtime.openOptionsPage().catch((error) => {
+    console.error("Failed to open preferences:", error);
+  });
 });
 
 render().catch((error) => console.error("Failed to render popup:", error));

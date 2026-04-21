@@ -1,32 +1,39 @@
 {
   "manifest_version": 3,
   "name": "Rumble Chat Blocker",
-  "version": "0.1.0",
-  "description": "Block Rumble chat users from the right-click menu and generate equivalent uBlock Origin filters.",
+  "version": "0.1.20",
+  "description": "Add inline block buttons to Rumble chat and generate equivalent uBlock Origin filters.",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
-    "*://rumble.com/chat*"
+    "*://rumble.com/*",
+    "*://www.rumble.com/*"
   ],
   "action": {
     "default_title": "Rumble Chat Blocker",
     "default_popup": "popup.html"
   },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "content_scripts": [
     {
       "matches": [
-        "*://rumble.com/chat*"
+        "*://rumble.com/*",
+        "*://www.rumble.com/*"
       ],
       "js": [
         "content-script.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "rumble-chat-blocker@local"
+      "id": "rumble-chat-blocker-dev@local"
     }
   }
 }

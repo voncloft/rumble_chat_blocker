@@ -21,6 +21,11 @@ body {
   gap: 12px;
 }
 
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
 h1 {
   margin: 0;
   font-size: 18px;
@@ -38,6 +43,15 @@ button {
 
 button:hover {
   background: #ffc857;
+}
+
+.secondary-button {
+  color: #f3f4f6;
+  background: #374151;
+}
+
+.secondary-button:hover {
+  background: #4b5563;
 }
 
 .hint {
