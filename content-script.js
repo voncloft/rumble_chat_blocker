@@ -3,9 +3,11 @@ const STORAGE_KEY = "blockedUsers";
 const HIDDEN_CLASS = "rumble-chat-blocker-hidden";
 const BLOCK_BUTTON_CLASS = "rumble-chat-blocker-button";
 const ROW_SELECTOR = ".chat-history--row, .chat-history--rant, .chat-history--notification";
+const MESSAGE_CONTENT_SELECTOR = ".chat-history--message, .chat-history--rant-text, .chat-history--notification-text";
 
 let blockedUsers = new Map();
 let observer = null;
+let rescanIntervalId = null;
 
 function normalizeUsername(username) {
   return username.trim().toLowerCase();
@@ -21,6 +23,24 @@ function getRowFromUserTag(userTag) {
 
 function getUsernameFromTag(userTag) {
   return userTag?.textContent?.trim() ?? "";
+}
+
+function getUserTagsFromRow(row) {
+  if (!(row instanceof Element)) {
+    return [];
+  }
+
+  return Array.from(row.querySelectorAll(USER_TAG_SELECTOR));
+}
+
+function getAuthorTagFromRow(row) {
+  const userTags = getUserTagsFromRow(row);
+  if (userTags.length === 0) {
+    return null;
+  }
+
+  const authorTag = userTags.find((userTag) => !userTag.closest(MESSAGE_CONTENT_SELECTOR));
+  return authorTag ?? userTags[0];
 }
 
 function ensureStyle() {
@@ -70,19 +90,33 @@ function showRow(row) {
 }
 
 function processUserTag(userTag) {
-  const username = getUsernameFromTag(userTag);
-  if (!username) {
-    return;
-  }
-
   const row = getRowFromUserTag(userTag);
   if (!row) {
     return;
   }
 
-  ensureBlockButton(userTag, username);
+  processRow(row);
+}
 
-  if (blockedUsers.has(normalizeUsername(username))) {
+function processRow(row) {
+  if (!(row instanceof Element)) {
+    return;
+  }
+
+  const authorTag = getAuthorTagFromRow(row);
+  if (!authorTag) {
+    return;
+  }
+
+  const authorUsername = getUsernameFromTag(authorTag);
+  if (!authorUsername) {
+    return;
+  }
+
+  ensureBlockButton(authorTag, authorUsername);
+  const shouldHide = blockedUsers.has(normalizeUsername(authorUsername));
+
+  if (shouldHide) {
     hideRow(row);
   } else {
     showRow(row);
@@ -92,6 +126,15 @@ function processUserTag(userTag) {
 function processNode(node) {
   if (!(node instanceof Element)) {
     return;
+  }
+
+  if (node.matches(ROW_SELECTOR)) {
+    processRow(node);
+  }
+
+  const rows = node.querySelectorAll(ROW_SELECTOR);
+  for (const row of rows) {
+    processRow(row);
   }
 
   if (node.matches(USER_TAG_SELECTOR)) {
@@ -105,7 +148,10 @@ function processNode(node) {
 }
 
 function processDocument() {
-  processNode(document.documentElement);
+  const rows = document.querySelectorAll(ROW_SELECTOR);
+  for (const row of rows) {
+    processRow(row);
+  }
 }
 
 async function loadBlockedUsers() {
@@ -219,22 +265,33 @@ function startObserving() {
     observer.disconnect();
   }
 
+  if (rescanIntervalId) {
+    window.clearInterval(rescanIntervalId);
+  }
+
   observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      for (const node of mutation.addedNodes) {
-        processNode(node);
+      if (mutation.type === "childList") {
+        for (const node of mutation.addedNodes) {
+          processNode(node);
+        }
+      }
+
+      if (mutation.type === "characterData") {
+        processNode(mutation.target.parentElement);
       }
     }
   });
 
   observer.observe(document.documentElement, {
     childList: true,
+    characterData: true,
     subtree: true,
   });
 
-  window.setInterval(() => {
+  rescanIntervalId = window.setInterval(() => {
     processDocument();
-  }, 1500);
+  }, 250);
 }
 
 browser.storage.onChanged.addListener((changes, areaName) => {
